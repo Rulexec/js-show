@@ -86,7 +86,7 @@ window.addEventListener('load', function() {
 
     // Заворачиваем в функцию, чтобы за'bind'ить значения,
     // иначе в обработчике события они будут указывать уже на последние значения в цикле
-    ((buttonEl, bitN) => {
+    (function(buttonEl, bitN) {
       buttonEl.addEventListener('click', function() {
         // Берём противоположный бит из маски, соответствующий выбранной кнопке
         var choose = !(bitmask & (1 << bitN));

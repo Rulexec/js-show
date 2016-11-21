@@ -5,8 +5,8 @@
   <title>Time Hunters</title>
 
   <script>
-const JSONP_HANDLER = '_receiveJsonTestDate';
-const GET_DATE_URL = 'http://date.jsontest.com/?callback=' + JSONP_HANDLER;
+var JSONP_HANDLER = '_receiveJsonTestDate';
+var GET_DATE_URL = 'http://date.jsontest.com/?callback=' + JSONP_HANDLER;
 
 window.addEventListener('load', function() {
   var getTimeButtonEl = document.getElementById('get-time-button'),
