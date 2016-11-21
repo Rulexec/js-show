@@ -109,12 +109,15 @@ window.addEventListener('load', function() {
   rerender();
 
   function rerender() {
-    numbersList.forEach(x => {
+    var i, x;
+    for (i = 0; i < numbersList.length; i++) {
+      x = numbersList[i];
+
       // Если есть все биты из маски, то показываем
       var matches = (x.value & bitmask) === bitmask;
 
       x.el.style.display = matches ? 'block' : 'none';
-    });
+    }
   }
 });
   </script>
