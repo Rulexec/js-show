@@ -1,0 +1,183 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset='utf-8'>
+  <title>Time Hunters</title>
+
+  <script>
+const JSONP_HANDLER = '_receiveJsonTestDate';
+const GET_DATE_URL = 'http://date.jsontest.com/?callback=' + JSONP_HANDLER;
+
+window.addEventListener('load', function() {
+  var getTimeButtonEl = document.getElementById('get-time-button'),
+      timeTextEl = document.getElementById('time-text'),
+      stateTextEl = document.getElementById('state-text'),
+      dateFormatSelectEl = document.getElementById('format-select'),
+      timezoneSelectEl = document.getElementById('timezone-select');
+
+  var noResponseTimeout = null;
+
+  getTimeButtonEl.addEventListener('click', function() {
+    // Блокируем UI, чтобы пользователь не нажимал девять тысяч раз
+    updateState({
+      uiEnabled: false,
+      stateText: 'Получение времени...',
+      stateTextColor: 'gray'
+    });
+
+    // Удалим все прошлые запросы, чтобы какой-нибудь повисший не обновил время на старое
+    var i;
+    var jsonpElements = document.getElementsByClassName('jsonp');
+    for (i = 0; i < jsonpElements.length; i++) {
+      document.head.removeChild(jsonpElements[i]);
+    }
+
+    // Запрашиваем время
+    var jsonp = document.createElement('script');
+    jsonp.setAttribute('src', GET_DATE_URL);
+    jsonp.className = 'jsonp';
+    document.head.appendChild(jsonp);
+
+    // Если через пять секунд ответ не придёт, разблокируем UI, покажем сообщение о ошибке
+    noResponseTimeout = setTimeout(function() {
+      noResponseTimeout = null;
+
+      updateState({
+        uiEnabled: true,
+        stateText: 'Ответа от сервера нет',
+        stateTextColor: 'red'
+      });
+    }, 5000);
+  });
+
+  window[JSONP_HANDLER] = function(data) {
+    // Ожидаем ответ вида {milliseconds_since_epoch: 1479735205830}
+
+    // Выключаем таймер ожидания ответа
+    noResponseTimeout !== null && clearTimeout(noResponseTimeout);
+    noResponseTimeout = null;
+
+    // Валидируем
+    if (!data || typeof data.milliseconds_since_epoch !== 'number') {
+      // Некорректный ответ
+      updateState({
+        uiEnabled: true,
+        stateText: 'Сервис вернул некорректный ответ: ' + JSON.stringify(data),
+        stateTextColor: 'red'
+      });
+      return;
+    }
+
+    var milliseconds = data.milliseconds_since_epoch;
+
+    // Берём смещение из select'а
+    var timezone = parseFloat(timezoneSelectEl.value);
+    // Смещаем на столько часов
+    milliseconds += timezone * 60 * 60 * 1000; // hours to milliseconds
+
+    var date = new Date(milliseconds);
+    // Обнуляем смещение относительно часового пояса пользователя
+    date.setTime(milliseconds + date.getTimezoneOffset() * 60 * 1000);
+
+    // Отображаем результат
+    updateDate(date);
+    updateState({
+      uiEnabled: true,
+      stateText: ''
+    });
+  };
+
+  // Форматирует дату, беря формат из select'а, отображает её
+  function updateDate(time) {
+    timeTextEl.innerHTML = formatDate(dateFormatSelectEl.value, time);
+  }
+  /*
+   * Изменяет состояние возможности нажатия кнопки запроса, текст статуса
+   *
+   * options: {
+   *   uiEnabled: <Boolean>,
+   *   stateText: <String>,
+   *   stateTextColor: <String>
+   * }
+   */
+  function updateState(options) {
+    if (options.uiEnabled !== undefined) { // Если не задано, то не трогаем
+      if (options.uiEnabled) {
+        getTimeButtonEl.removeAttribute('disabled');
+      } else {
+        getTimeButtonEl.setAttribute('disabled', true);
+      }
+    }
+
+    if (options.stateText !== undefined) stateTextEl.innerHTML = options.stateText;
+    if (options.stateColor !== undefined) stateTextEl.style.color = options.stateTextColor;
+  }
+
+  // В реальности я бы взял Moment.js, но сегодня пишем без зависимостей
+  // TODO: Такие штуки на заранее известных форматах нужно кодогенерировать
+  function formatDate(format, date) {
+    return format.replace(/(dd|MM|yyyy|HH|mm|ss)/g, function(x) {
+      switch (x) {
+      case 'dd': return leftPad0(date.getDate(), 2);
+      case 'MM': return leftPad0(date.getMonth() + 1, 2);
+      case 'yyyy': return leftPad0(date.getFullYear(), 4);
+      case 'HH': return leftPad0(date.getHours(), 2);
+      case 'mm': return leftPad0(date.getMinutes(), 2);
+      case 'ss': return leftPad0(date.getSeconds(), 2);
+      }
+    });
+
+    // Добавляет нулей слева, чтобы длина строки стала равна width
+    // Либо обрезает лишние символы слева
+    function leftPad0(n, width) {
+      var s = n.toString();
+      if (s.length === width) return s;
+      if (s.length > width) return s.slice(-width);
+
+      return createString(width - s.length, '0') + s;
+
+      // Создаёт строку заданной длины из заданных символов
+      function createString(width, symbol) {
+        var array = Array(width);
+        var i;
+        for (i = 0; i < width; i++) {
+          array[i] = symbol;
+        }
+        return array.join('');
+      }
+    }
+  }
+});
+  </script>
+
+  <style>
+#state-text { color: gray; }
+  </style>
+</head>
+
+<body>
+
+<p id='time-text'>Нажмите кнопку</p>
+
+<select id='format-select'>
+  <!-- Аккуратно, эти значения будут переданы в парсер.
+       Если нужно изменить значения, придётся перенести форматы в data-format или около того -->
+  <option>dd.MM.yyyy HH:mm:ss</option>
+  <option>yyyy-MM-dd HH:mm</option>
+  <option>yyyy/MM/dd HH:mm:ss</option>
+</select>
+
+<select id='timezone-select'>
+  <!-- В value хранится часы смещения относительно UTC -->
+  <option value='-6'>(-06:00) Центральное время (США и Канада), Мехико</option>
+  <option value='3'>(+03:00) Минск, Багдад, Москва, Санкт-Петербург, Волгоград</option>
+  <option value='6'>(+06:00) Астана, Дакка, Омск</option>
+  <option value='11.5'>(+11:30) Остров Норфолк (Австралия)</option>
+</select>
+
+<button id='get-time-button'>Получить время</button>
+
+<span id='state-text'></span>
+
+</body>
+</html>

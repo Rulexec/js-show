@@ -1,0 +1,138 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset='utf-8'>
+  <title>Bits Busters</title>
+
+  <script>
+// Firefox 40 не может into forward declaration hoisting,
+// либо переносим их выше по скоупу, или оборачиваем выполнение в try/catch
+
+// Функция для заполнения строки слева
+function leftPad(s, width, symbol) {
+  s = s.toString();
+  if (s.length === width) return s;
+  if (s.length > width) return s.slice(-width);
+
+  return createString(width - s.length, symbol) + s;
+}
+// Функция для заполнения строки справа
+function rightPad(s, width, symbol) {
+  s = s.toString();
+  if (s.length === width) return s;
+  if (s.length > width) return s.slice(width);
+
+  return s + createString(width - s.length, symbol);
+}
+
+// Создаёт строку заданной длины из заданных символов
+function createString(width, symbol) {
+  var array = Array(width);
+  var i;
+  for (i = 0; i < width; i++) {
+    array[i] = symbol;
+  }
+  return array.join('');
+}
+
+window.addEventListener('load', function() {
+  var numbersSelectEl = document.getElementById('numbers-select'),
+      buttonsEl = document.getElementById('buttons');
+
+  // В списке хранятся объекты {value: <Number>, el: <DOMElement>},
+  // Обрабатывается в функции rerender
+  var numbersList = [],
+      bitmask = 0;
+
+  // Создаём случайные числа
+  var numbersSet = new Set();
+  var i;
+  for (i = 0; i < 50; i++) {
+    var rand;
+
+    do { // Генерируем случайное пока уже есть такое число
+      rand = (Math.random() * 65536) | 0;
+    } while (numbersSet.has(rand));
+
+    // Запоминаем, что оно уже было
+    numbersSet.add(rand);
+
+    // Показываем число в десятичной и двоичной системах, выравниваем
+    var optionEl = document.createElement('option');
+    optionEl.innerHTML =
+      rightPad(rand.toString(), 5, '&nbsp;') +
+      '&nbsp;&nbsp;-&nbsp;&nbsp;' +
+      leftPad(rand.toString(2), 16, '0');
+
+    numbersList.push({
+      value: rand,
+      el: optionEl
+    });
+
+    numbersSelectEl.appendChild(optionEl);
+  }
+
+  // Добавляем кнопки
+  for (var i = 0; i < 16; i++) {
+    // Мы добавляем кнопки слева направо, а биты нумеруются справа налево, отражаем
+    var bitN = 15 - i;
+
+    // Выбираем конкретный бит
+    var isChosen = !!(bitmask & (1 << bitN));
+
+    var buttonEl = document.createElement('button');
+    buttonEl.className = isChosen ? 'chosen' : null;
+    buttonEl.innerHTML = isChosen ? '1' : '0';
+
+    // Заворачиваем в функцию, чтобы за'bind'ить значения,
+    // иначе в обработчике события они будут указывать уже на последние значения в цикле
+    ((buttonEl, bitN) => {
+      buttonEl.addEventListener('click', function() {
+        // Берём противоположный бит из маски, соответствующий выбранной кнопке
+        var choose = !(bitmask & (1 << bitN));
+
+        buttonEl.className = choose ? 'chosen' : null;
+        buttonEl.innerHTML = choose ? '1' : '0';
+
+        // Записываем противоположный бит в маску
+        bitmask = bitmask ^ (1 << bitN);
+
+        // Перерисовываем список
+        rerender();
+      });
+    })(buttonEl, bitN);
+    
+    buttonsEl.appendChild(buttonEl);
+  }
+
+  // Сейчас это не нужно, но если задать bitmask по умолчанию отличное от нуля, то нужно будет перерисовывать
+  rerender();
+
+  function rerender() {
+    numbersList.forEach(x => {
+      // Если есть все биты из маски, то показываем
+      var matches = (x.value & bitmask) === bitmask;
+
+      x.el.style.display = matches ? 'block' : 'none';
+    });
+  }
+});
+  </script>
+
+  <style>
+#numbers-select {
+  font-family: monospace;
+}
+#buttons { margin-bottom: 0.7em; }
+#buttons button { margin: 0.3em; }
+#buttons button.chosen { background: #f88; }
+  </style>
+</head>
+
+<body>
+
+<div id='buttons'></div>
+<select id='numbers-select' multiple size='20'></select>
+
+</body>
+</html>
