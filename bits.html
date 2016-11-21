@@ -45,17 +45,17 @@ window.addEventListener('load', function() {
       bitmask = 0;
 
   // Создаём случайные числа
-  var numbersSet = new Set();
+  var numbersSet = Object.create(null);
   var i;
   for (i = 0; i < 50; i++) {
     var rand;
 
     do { // Генерируем случайное пока уже есть такое число
       rand = (Math.random() * 65536) | 0;
-    } while (numbersSet.has(rand));
+    } while (numbersSet[rand] === true);
 
     // Запоминаем, что оно уже было
-    numbersSet.add(rand);
+    numbersSet[rand] = true;
 
     // Показываем число в десятичной и двоичной системах, выравниваем
     var optionEl = document.createElement('option');
