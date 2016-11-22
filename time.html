@@ -27,7 +27,7 @@ window.addEventListener('load', function() {
 
     // Удалим все прошлые запросы, чтобы какой-нибудь повисший не обновил время на старое
     var i;
-    var jsonpElements = document.getElementsByClassName('jsonp');
+    var jsonpElements = document.head.getElementsByClassName('jsonp');
     for (i = 0; i < jsonpElements.length; i++) {
       document.head.removeChild(jsonpElements[i]);
     }

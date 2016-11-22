@@ -5,7 +5,7 @@
   <title>Bits Busters</title>
 
   <script>
-// Firefox 40 не может into forward declaration hoisting,
+// Firefox 40 не может into function declaration hoisting,
 // либо переносим их выше по скоупу, или оборачиваем выполнение в try/catch
 
 // Функция для заполнения строки слева
@@ -109,6 +109,7 @@ window.addEventListener('load', function() {
   rerender();
 
   function rerender() {
+    // Проходим по всем числам в нашем списке
     var i, x;
     for (i = 0; i < numbersList.length; i++) {
       x = numbersList[i];
@@ -116,6 +117,7 @@ window.addEventListener('load', function() {
       // Если есть все биты из маски, то показываем
       var matches = (x.value & bitmask) === bitmask;
 
+      // Это не работает в IE9
       x.el.style.display = matches ? 'block' : 'none';
     }
   }
