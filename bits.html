@@ -35,6 +35,22 @@ function createString(width, symbol) {
   return array.join('');
 }
 
+// Создаёт DOM-элемент опции списка для отображения числа
+// Записывает в поле _numberId идентификатор, нужный для перерисовки списка
+function createOptionEl(id, n) {
+  var result = document.createElement('option');
+
+  // Показываем число в десятичной и двоичной системах, выравниваем
+  result.innerHTML =
+    rightPad(n.toString(), 5, '&nbsp;') +
+    '&nbsp;&nbsp;-&nbsp;&nbsp;' +
+    leftPad(n.toString(2), 16, '0');
+
+  result._numberId = id;
+
+  return result;
+}
+
 window.addEventListener('load', function() {
   var numbersSelectEl = document.getElementById('numbers-select'),
       buttonsEl = document.getElementById('buttons');
@@ -57,12 +73,8 @@ window.addEventListener('load', function() {
     // Запоминаем, что оно уже было
     numbersSet[rand] = true;
 
-    // Показываем число в десятичной и двоичной системах, выравниваем
-    var optionEl = document.createElement('option');
-    optionEl.innerHTML =
-      rightPad(rand.toString(), 5, '&nbsp;') +
-      '&nbsp;&nbsp;-&nbsp;&nbsp;' +
-      leftPad(rand.toString(2), 16, '0');
+    // Создаём DOM-элемент списка
+    var optionEl = createOptionEl(i, rand);
 
     numbersList.push({
       value: rand,
@@ -109,16 +121,65 @@ window.addEventListener('load', function() {
   rerender();
 
   function rerender() {
-    // Проходим по всем числам в нашем списке
-    var i, x;
-    for (i = 0; i < numbersList.length; i++) {
-      x = numbersList[i];
+    var domI,
+        numbersI = 0;
 
+    // Сюда будем складывать функции удаления/создания элементов,
+    // которые выполним после обхода списка детей
+    var actions = [];
+
+    // Пришлось вынести внутренности цикла в отдельную функцию, ибо потребовались в другом цикле
+    // Принимает объект числа, элемент,
+    // bool elementInDOM говорит, является ли element DOM-отображением переданного числа,
+    // actions — список функций, куда нужно добавить желаемые DOM-изменения, которые произойдут позже
+    function processNumberAndElement(number, element, elementInDOM, actions) {
       // Если есть все биты из маски, то показываем
-      var matches = (x.value & bitmask) === bitmask;
+      var matches = (number.value & bitmask) === bitmask;
+      
+      if (elementInDOM) { // Этот элемент сейчас показан
+        if (matches) return; // Показан и нужно показать, цель достигнута
 
-      // Это не работает в IE9
-      x.el.style.display = matches ? 'block' : 'none';
+        // удалить
+        actions.push(function() {
+          numbersSelectEl.removeChild(element);
+        });
+      } else { // Его нет
+        if (!matches) return; // Его нет и его нужно скрыть, цель достигнута
+
+        // создать
+        if (element !== null) {
+          actions.push(function() {
+            numbersSelectEl.insertBefore(number.el, element);
+          });
+        } else {
+          actions.push(function() {
+            numbersSelectEl.appendChild(number.el);
+          });
+        }
+      }
+    }
+
+    // Проходим по находящимся внутри списка DOM-элементам на данный момент
+    var children = numbersSelectEl.children,
+        child, childId, number, matches;
+    for (domI = 0; domI < children.length; domI++) {
+      child = children[domI];
+      childId = child._numberId;
+
+      // Обрабатываем числа, которые должны быть между предыдущим DOM-элементом и текущим
+      for (; numbersI <= childId; numbersI++) {
+        processNumberAndElement(numbersList[numbersI], child, numbersI === childId, actions);
+      }
+    }
+    // Обрабатываем оставшиеся числа, которые идут после последнего DOM-элемента
+    for (; numbersI < numbersList.length; numbersI++) {
+      processNumberAndElement(numbersList[numbersI], null, false, actions);
+    }
+
+    // Производим применение действий с DOM
+    var i;
+    for (i = 0; i < actions.length; i++) {
+      actions[i]();
     }
   }
 });
